@@ -162,6 +162,41 @@
                 });
             },
             /**
+             * 地图路线渲染
+             * @param {String|Latlng} destination: 必须，目的地
+             * @param {String|Latlng} origin: 必须，起点
+             * @param {TravelMode} travelMode: 必须，方式
+             * @returns Describe what it returns
+             */
+            direction: function(params) {
+                if (this.map) {
+                    var _this = this;
+                    var destination = typeof params.destination != 'undefined' ? params.destination : '';
+                    var origin = typeof params.origin != 'undefined' ? params.origin : '';
+                    var travelMode = typeof params.travelMode != 'undefined' ? params.travelMode : google.maps.TravelMode.DRIVING;
+                    if (!this.directionsRenderer) {
+                        this.directionsRenderer = new google.maps.DirectionsRenderer();
+                    }
+                    if (params.renderTo) {
+                        this.directionsRenderer.setPanel(params.renderTo);
+                    }
+                    this.directionsRenderer.setMap(this.map);
+                    if (!this.directionsService) {
+                        this.directionsService = new google.maps.DirectionsService();
+                    }
+                    console.log(destination);
+                    this.directionsService.route({
+                        destination: destination,
+                        origin: origin,
+                        travelMode: travelMode
+                    }, function(results, status) {
+                        if (status == google.maps.DirectionsStatus.OK) {
+                            _this.directionsRenderer.setDirections(results);
+                        }
+                    });
+                }
+            },
+            /**
              * 标识marker
              * @param {Number} lat： 可选，纬度
              * @param {Number} lng： 可选，经度
@@ -228,6 +263,7 @@
                 if (navigator.geolocation) { // 浏览器地理坐标
                     navigator.geolocation.getCurrentPosition(function(position) {
                         if (_this.searching !== true) {
+                            console.log(position.coords.latitude);
                             _this.marker(position.coords.latitude, position.coords.longitude, {
                                 icon: params.icon,
                                 center: params.center,
@@ -300,7 +336,7 @@
                     this.geocoder = new google.maps.Geocoder();
                 }
                 this.geocoder.geocode({
-                    latLng: new google.maps.LatLng(lat, lng)
+                    location: new google.maps.LatLng(lat, lng)
                 }, function(results, status) {
                     if (status == google.maps.GeocoderStatus.OK) {
                         params.success && params.success.call(_this, results[0], results);
