@@ -1,0 +1,67 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <meta charset="UTF-8"/>
+        <title>baidu map使用</title>
+		<style type="text/css">
+			body {
+				height: 2000px;
+			}
+			#map1 {
+				width: 300px;
+				height:300px;
+				border:1px solid #ddd;
+				margin:10px;
+				float:left;
+			}
+			#map2 {
+                width: 500px;
+                height:500px;
+                border:1px solid #ddd;
+                margin:10px;
+				float:left;
+            }
+            #map3 {
+                width: 500px;
+                height:500px;
+                border:1px solid #ddd;
+                margin:10px;
+				float:left;
+            }
+            #directions{
+                width: 200px;
+                height:500px;
+                margin: 10px 0;
+                border: 1px solid #ddd;
+                float: left;
+            }
+            #address {
+                width: 400px;
+            }
+		</style>
+        <script src="js/lib/jquery-1.7.2.min.js"></script>
+		<script src="js/lib/map/bmap.js"></script>
+		<script src="js/app/bmap.js"></script>
+    </head>
+    <body>
+    	<p></p>
+    	<p>
+    		用经纬度设定
+    	    <input type="text" value="26.085933" id="lat"/>
+		    <input type="text" value="119.299277" id="lng"/>
+    	    <input type="button" id="btn1" value="查看地图"/>
+		</p>
+		<p>
+            用地址搜索设定
+            <input type="text" value="福州东街口" id="address"/>
+            <input type="button" id="btn2" value="搜索地图"/>
+			<input type="button" id="btn3" value="当前位置地图"/>
+        </p>
+		<div>
+		    <div id="map1">地图1</div>
+		    <div id="map2">地图2</div>
+		    <div id="map3">地图3</div>
+            <div id="directions"></div>
+		</div>
+    </body>
+</html>
