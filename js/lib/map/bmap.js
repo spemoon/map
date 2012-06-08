@@ -28,6 +28,7 @@
      *     lng：{Number} 可选，经度
      *     mapType：{String} 可选，地图类型
      *     zoom：{Number} 可选，地图缩放比例
+     *     markPosition：{Boolean} 可选，识别是哪种地图，true表示选地址地图
      */
     var baiduMap = function(params) {
         this.node = typeof params.node == 'string' ? document.getElementById(params.node) : params.node;
@@ -41,6 +42,7 @@
         this.mapType = params.mapType || config.map.type;
         this.zoom = params.zoom || config.map.zoom;
         this.localCityName = params.localCityName || returnCitySN.cname || '福州市';
+        this.markPosition = params.markPosition || 'select';
     };
     /**
      * 静态方法：载入脚本
@@ -122,31 +124,98 @@
             search: function(address, callback) {
                 if (address && this.map) {
                     this.map.clearOverlays();
-                    if (!this.geocoder) {
-                        this.geocoder = new BMap.Geocoder();
-                    }
+                    /*if (!this.geocoder) {*/
+                        //this.geocoder = new BMap.Geocoder();
+                    //}
+                    //var _this = this;
+                    //this.searching = true;
+                    //this.geocoder.getPoint(address, function(point){
+                        //if (!point) {
+                            //alert("没有搜索到您需要的地址");
+                            //return;
+                        //}
+                        //_this.geocoder.getLocation(point, function(results) {
+                            //if(results === null){
+                                //alert("在前面加上城市会搜得更准哦");
+                                //return;
+                            //}
+                            //_this.marker(results.point, {
+                                //enableDragging: true,
+                                //callback: function() {
+                                    //callback && callback.call(_this);
+                                //}
+                            //});
+                        //});
+                    /*}, _this.localCityName);*/
                     var _this = this;
-                    this.searching = true;
-                    this.geocoder.getPoint(address, function(point){
-                        if (!point) {
-                            alert("没有搜索到您需要的地址");
-                            return;
-                        }
-                        _this.geocoder.getLocation(point, function(results) {
-                            if(results === null){
-                                alert("在前面加上城市会搜得更准哦");
-                                return;
-                            }
-                            _this.marker(results.point, {
-                                enableDragging: true,
-                                callback: function() {
-                                    callback && callback.call(_this);
-                                }
-                            });
-                        });
-                    }, _this.localCityName);
+                    if (!this.localSearch) {
+                        this.localSearch = new BMap.LocalSearch(address);
+                    }
+                    this.localSearch.search(address);
+                    this.localSearch.setSearchCompleteCallback(function(results) {
+                        _this.searchComplete(results, callback);
+                    }); 
                 }
                 return this;
+            },
+            searchComplete: function(results, callback) {
+                var num = results.getNumPois();
+                if (num > 10) {
+                    num = 10;
+                }
+                var _this = this;
+                for(var i = 0; i < num; i++){
+                    var point = results.getPoi(i).point;
+                    var title = results.getPoi(i).title;
+                    (function(i) {
+                        var address = results.getPoi(i).address;
+                        var marker = '';
+                        if (i === 0) {
+                            marker = _this.marker(point, {
+                                enableDragging: true,
+                                title: title,
+                                callback: function() {
+                                    callback && callback.call(_this, address);
+                                }
+                            });    
+                        } else {
+                            marker = _this.marker(point, {
+                                enableDragging: true,
+                                title: title
+                            });
+                        }
+                        marker.setAnimation(BMAP_ANIMATION_DROP);
+                        function infoWinDrag (callback) {
+                            point = marker.getPosition();
+                            _this.markerPoint = marker;
+                            _this.getArea(point, {
+                                success: function(results) {
+                                    callback && callback.call(_this, results.address);
+                                }
+                            });
+                        }
+                        if (_this.markPosition === 'select') {
+                            function selectDrag(address) {
+                                var html = '<p>' + address + '</p><a title="选定该地址" class="b-3" id="select" href="#" data-action="selectLocation">选定该地址</a>';
+                                _this.infoWindow(html, function(data) {});
+                                $('#select').click(function() {
+                                    document.getElementById('address').value = address;
+                                });
+                            }
+                            marker.addEventListener('dragend', function(e) {infoWinDrag(selectDrag)});    
+                            marker.addEventListener('click', function(e) {infoWinDrag(selectDrag)});    
+                            
+                        } else if (_this.markPosition === 'transit'){
+                            function transitDrag(address) {
+                                var html = '<p>' + address + '</p><p>起点:</p><input id="direction" data-action="from" name="" type="text" /><p><input type="button" data-action="go" id="go" value="去这里" /></p>'
+                                _this.infoWindow(html, function() {});
+                            }
+                            marker.addEventListener('click', function(e) {infoWinDrag(transitDrag)});
+                            marker.addEventListener('dragend', function(e) {infoWinDrag(transitDrag)});
+                        }
+                        
+                    })(i);   
+                }
             },
             /**
              * 标识marker
@@ -156,17 +225,17 @@
              */
             marker: function(point, params) {
                 if (this.map) {
+                    var _this = this;
                     params = params || {};
                     this.markerPoint = new BMap.Marker(point, {
-                        enableDragging: params.enableDragging
+                        enableDragging: params.enableDragging || false,
+                        title: params.title || '',
+                        icon: new BMap.Icon('themes/images/map/marker.png', new BMap.Size(32, 32))
                     });
                     this.map.addOverlay(this.markerPoint);
-                    if (params.center !== false) { // 默认居中
-                        this.map.centerAndZoom(point, this.zoom);
-                    }
                     params.callback && params.callback.call(this); // 回调
                 }
-                return this;
+                return this.markerPoint;
             },
             /**
              * 针对marker设置一个infoWindow
@@ -181,9 +250,7 @@
                         this.infoWin = new BMap.InfoWindow(content);
                     }
                     this.markerPoint.openInfoWindow(this.infoWin);
-                    this.markerPoint.addEventListener('click', function(e) {
-                        _this.markerPoint.openInfoWindow(_this.infoWin);
-                    });
+                    
                     this.infoWin.addEventListener('open', function(e) {
                         callback && callback.call(this, e);
                     });
@@ -218,11 +285,81 @@
              */
             transit: function(location, params, direction) {
                 if (location) {
+                    var _this = this;
                     if (!this.transitRoute) {
-                        this.transitRoute = new BMap.TransitRoute(location, params);
+                        this.transitRoute = new BMap.TransitRoute(location);
                     }
-                    this.transitRoute.search(location, direction);
-                    //console.log(this.transitRoute.getResults());
+                    this.transitRoute.search(direction, location);
+                    this.transitRoute.setSearchCompleteCallback(function(results) {
+                        _this.transitCompleteCallback(results, params.renderTo);
+                    }); 
+                }
+            },
+            transitCompleteCallback: function(results, renderTo) {
+                // 从结果对象中获取起点和终点信息
+                var start = results.getStart();
+                var end = results.getEnd();
+                this.addStart(start.point, start.title);
+                this.addEnd(end.point, end.title);
+                console.log(results.getPlan(0));
+                // 直接获取第一个方案
+                var plan = results.getPlan(0);
+                // 遍历所有步行线路
+                for (var i = 0; i < plan.getNumRoutes(); i++) {
+                    if (plan.getRoute(i).getDistance(false) > 0) {
+                        // 判断只有大于0的步行线路才会绘制
+                        this.addWalkRoute(plan.getRoute(i).getPath());
+                    }
+                }
+                // 遍历所有公交线路
+                var allLinePath = [];
+                for (i = 0; i < plan.getNumLines(); i++) {
+                    allLinePath = allLinePath.concat(plan.getLine(i).getPath());
+                    this.addLine(plan.getLine(i).getPath());
+                }
+                // 最后根据公交线路的点设置地图视野
+                this.map.setViewport(allLinePath);
+            },
+            addStart: function(point, title) {
+                if (this.map) {
+                    this.map.addOverlay(new BMap.Marker(point, {
+                        title: title,
+                        enableDragging: true,
+                        icon: new BMap.Icon('themes/images/map/dest_markers.png', new BMap.Size(39, 33)),
+                        offset: new BMap.Size(10, -20)
+                    }));
+                }
+            },
+            addEnd: function(point, title) {
+                if (this.map) {
+                    this.map.addOverlay(new BMap.Marker(point, {
+                        title: title,
+                        icon: new BMap.Icon('themes/images/map/dest-markers.png', new BMap.Size(33, 39), {
+                            imageOffset: new BMap.Size(0, 34)
+                        })   
+                    }));
+                }
+            },
+            addWalkRoute: function(path) {
+                if (this.map) {
+                    this.map.addOverlay(new BMap.Polyline(path, {
+                        strokeColor: 'black',
+                        strokeOpacity: 0.7,
+                        strokeWeight: 4,
+                        strokeStyle: 'dashed',
+                        enableClicking: false
+                    }));
+                }
+            },
+            addLine: function(path) {
+                if (this.map) {
+                    this.map.addOverlay(new BMap.Polyline(path, {
+                        strokeColor: 'blue',
+                        strokeOpacity: 0.6,
+                        strokeWeight: 5,
+                        enableClicking: false
+                    }));
+
                 }
             }
         };

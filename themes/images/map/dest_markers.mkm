@@ -1,0 +1,7 @@
+<MKM version="2.0" imageFileUrl="file:///D:/LD/wamp/www/spemoon_git_project/map/themes/images/map/dest_markers.png">
+  <Marks>
+    <LengthMark direction="3" color="16711680" length="33" x="22" y="0"/>
+    <LengthMark direction="12" color="16711680" length="39" x="0" y="22"/>
+    <LengthMark direction="3" color="16711680" length="34" x="1" y="1"/>
+  </Marks>
+</MKM>
