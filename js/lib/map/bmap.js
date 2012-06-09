@@ -296,14 +296,26 @@
                 }
             },
             transitCompleteCallback: function(results, renderTo) {
+                this.map.clearOverlays();
                 // 从结果对象中获取起点和终点信息
                 var start = results.getStart();
                 var end = results.getEnd();
                 this.addStart(start.point, start.title);
                 this.addEnd(end.point, end.title);
+                var planNum = results.getNumPlans(); 
                 console.log(results.getPlan(0));
+                console.log(results.getPlan(0).getDescription());
+                var descriptHtml = '<ul>';
+                for(var i = 0; i < planNum; i++){
+                    descriptHtml += '<li>' + results.getPlan(i).getDescription() + '</li>';
+                }
+                descriptHtml += '</ul>';
+                document.getElementById(renderTo).innerHTML = descriptHtml;
                 // 直接获取第一个方案
                 var plan = results.getPlan(0);
+                this.drawPath(plan);
+            },
+            drawPath: function(plan) {
                 // 遍历所有步行线路
                 for (var i = 0; i < plan.getNumRoutes(); i++) {
                     if (plan.getRoute(i).getDistance(false) > 0) {
@@ -325,8 +337,9 @@
                     this.map.addOverlay(new BMap.Marker(point, {
                         title: title,
                         enableDragging: true,
-                        icon: new BMap.Icon('themes/images/map/dest_markers.png', new BMap.Size(39, 33)),
-                        offset: new BMap.Size(10, -20)
+                        icon: new BMap.Icon('themes/images/map/dest_markers.png', new BMap.Size(39, 33), {
+                              anchor: new BMap.Size(12, 33) 
+                        })
                     }));
                 }
             },
@@ -334,8 +347,8 @@
                 if (this.map) {
                     this.map.addOverlay(new BMap.Marker(point, {
                         title: title,
-                        icon: new BMap.Icon('themes/images/map/dest-markers.png', new BMap.Size(33, 39), {
-                            imageOffset: new BMap.Size(0, 34)
+                        icon: new BMap.Icon('http://images.cnblogs.com/cnblogs_com/jz1108/329471/o_blue.png', new BMap.Size(38, 41), {
+                              anchor: new BMap.Size(4, 36)
                         })   
                     }));
                 }

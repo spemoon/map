@@ -62,7 +62,6 @@
                                 //renderOptions: {map: _this, panel: "directions"}  
                             //});  
                         /*transit.search(direction, point);*/
-
                     });
                 });
             });
