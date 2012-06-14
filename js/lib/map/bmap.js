@@ -124,29 +124,6 @@
             search: function(address, callback) {
                 if (address && this.map) {
                     this.map.clearOverlays();
-                    /*if (!this.geocoder) {*/
-                        //this.geocoder = new BMap.Geocoder();
-                    //}
-                    //var _this = this;
-                    //this.searching = true;
-                    //this.geocoder.getPoint(address, function(point){
-                        //if (!point) {
-                            //alert("没有搜索到您需要的地址");
-                            //return;
-                        //}
-                        //_this.geocoder.getLocation(point, function(results) {
-                            //if(results === null){
-                                //alert("在前面加上城市会搜得更准哦");
-                                //return;
-                            //}
-                            //_this.marker(results.point, {
-                                //enableDragging: true,
-                                //callback: function() {
-                                    //callback && callback.call(_this);
-                                //}
-                            //});
-                        //});
-                    /*}, _this.localCityName);*/
                     var _this = this;
                     if (!this.localSearch) {
                         this.localSearch = new BMap.LocalSearch(address);
@@ -229,8 +206,8 @@
                     params = params || {};
                     this.markerPoint = new BMap.Marker(point, {
                         enableDragging: params.enableDragging || false,
-                        title: params.title || '',
-                        icon: new BMap.Icon('themes/images/map/marker.png', new BMap.Size(32, 32))
+                        title: params.title || ''
+                        //icon: new BMap.Icon('themes/images/map/marker.png', new BMap.Size(32, 32))
                     });
                     this.map.addOverlay(this.markerPoint);
                     params.callback && params.callback.call(this); // 回调
@@ -287,7 +264,10 @@
                 if (location) {
                     var _this = this;
                     if (!this.transitRoute) {
-                        this.transitRoute = new BMap.TransitRoute(location);
+                        this.transitRoute = new BMap.TransitRoute(location, { 
+                            policy: BMAP_TRANSIT_POLICY_LEAST_TIME,
+                            pageCapacity: 5 
+                        });
                     }
                     this.transitRoute.search(direction, location);
                     this.transitRoute.setSearchCompleteCallback(function(results) {
@@ -296,26 +276,29 @@
                 }
             },
             transitCompleteCallback: function(results, renderTo) {
-                this.map.clearOverlays();
+                var _this = this;
                 // 从结果对象中获取起点和终点信息
                 var start = results.getStart();
                 var end = results.getEnd();
-                this.addStart(start.point, start.title);
-                this.addEnd(end.point, end.title);
                 var planNum = results.getNumPlans(); 
-                console.log(results.getPlan(0));
-                console.log(results.getPlan(0).getDescription());
-                var descriptHtml = '<ul>';
+                var descriptHtml = '<ul class="ui-widget-map-transit-result">';
                 for(var i = 0; i < planNum; i++){
-                    descriptHtml += '<li>' + results.getPlan(i).getDescription() + '</li>';
+                    descriptHtml += '<li class="ui-widget-map-transit-result-li" data-i="' + i + '"><div class="ui-widget-map-transit-result-li-head"><h3>' + results.getPlan(i).getLine(0).title + '</h3><span>全程约' + results.getPlan(i).getDuration() + '/' + results.getPlan(i).getDistance() + '</span></div><p>' + results.getPlan(i).getDescription()+ '</p></li>';
                 }
                 descriptHtml += '</ul>';
                 document.getElementById(renderTo).innerHTML = descriptHtml;
+                $('.ui-widget-map-transit-result-li').click(function() {
+                    var i = $(this).attr("data-i");   
+                    _this.drawPath(start, end, results.getPlan(i));
+                });
                 // 直接获取第一个方案
                 var plan = results.getPlan(0);
-                this.drawPath(plan);
+                this.drawPath(start, end, plan);
             },
-            drawPath: function(plan) {
+            drawPath: function(start, end, plan) {
+                this.map.clearOverlays();
+                this.addStart(start.point, start.title);
+                this.addEnd(end.point, end.title);
                 // 遍历所有步行线路
                 for (var i = 0; i < plan.getNumRoutes(); i++) {
                     if (plan.getRoute(i).getDistance(false) > 0) {
@@ -334,29 +317,33 @@
             },
             addStart: function(point, title) {
                 if (this.map) {
-                    this.map.addOverlay(new BMap.Marker(point, {
+                    this.startMarkerPoint = new BMap.Marker(point, {
                         title: title,
                         enableDragging: true,
                         icon: new BMap.Icon('themes/images/map/dest_markers.png', new BMap.Size(39, 33), {
                               anchor: new BMap.Size(12, 33) 
                         })
-                    }));
+                    });
+                    this.map.addOverlay(this.startMarkerPoint);
                 }
             },
             addEnd: function(point, title) {
                 if (this.map) {
-                    this.map.addOverlay(new BMap.Marker(point, {
+                    var endIcon = new BMap.Icon('themes/images/map/dest_markers.png', new BMap.Size(39, 33), {
+                              anchor: new BMap.Size(12, 33) 
+                    });
+                    endIcon.imageOffset = new BMap.Size(0, -34);
+                    this.endMarkerPoint = new BMap.Marker(point, {
                         title: title,
-                        icon: new BMap.Icon('http://images.cnblogs.com/cnblogs_com/jz1108/329471/o_blue.png', new BMap.Size(38, 41), {
-                              anchor: new BMap.Size(4, 36)
-                        })   
-                    }));
+                        icon: endIcon    
+                    });
+                    this.map.addOverlay(this.endMarkerPoint);
                 }
             },
             addWalkRoute: function(path) {
                 if (this.map) {
                     this.map.addOverlay(new BMap.Polyline(path, {
-                        strokeColor: 'black',
+                        strokeColor: '#78C23F',
                         strokeOpacity: 0.7,
                         strokeWeight: 4,
                         strokeStyle: 'dashed',
